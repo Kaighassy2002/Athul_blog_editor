@@ -1,0 +1,169 @@
+import { useLexicalComposerContext } from "@lexical/react/LexicalComposerContext";
+import { Button, Modal, Form } from "react-bootstrap";
+import { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
+import { saveEditorAPI, updatesByIdAPI } from "../server/allAPI";
+import { $generateHtmlFromNodes } from '@lexical/html';
+
+export default function ToolbarDown({ id = null, initialData = null }) {
+  const [editor] = useLexicalComposerContext();
+  const navigate = useNavigate();
+
+  const [showModal, setShowModal] = useState(false);
+  const [title, setTitle] = useState("");
+  const [coverImageUrl, setCoverImageUrl] = useState("");
+  const [tags, setTags] = useState("");
+  const [contentJSON, setContentJSON] = useState(null);
+
+  const isEditMode = Boolean(id);
+
+  // Sync modal fields when modal opens in edit mode
+  useEffect(() => {
+    if (showModal && isEditMode && initialData) {
+      setTitle(initialData.title || "");
+      setCoverImageUrl(initialData.coverImageUrl || "");
+      setTags((initialData.tags || []).join(", "));
+    }
+  }, [showModal, isEditMode, initialData]);
+
+  const handleSaveClick = () => {
+    const editorState = editor.getEditorState();
+
+    editorState.read(() => {
+      const root = editorState._nodeMap.get("root");
+      const totalText = root?.getTextContent?.() ?? "";
+
+      if (totalText.trim() === "") {
+        alert("Editor is empty. Nothing to save.");
+        return;
+      }
+
+      const content = editorState.toJSON();
+      setContentJSON(content);
+      setShowModal(true);
+    });
+  };
+
+  const handleModalSave = async () => {
+    if (title.trim() === "") {
+      alert("Please enter a title.");
+      return;
+    }
+
+    const payload = {
+      title,
+      coverImageUrl,
+      tags: tags.split(",").map((t) => t.trim()).filter(Boolean),
+      content: contentJSON,
+    };
+
+    try {
+      let res;
+      if (isEditMode) {
+        res = await updatesByIdAPI(id, payload);
+      } else {
+        res = await saveEditorAPI(payload);
+      }
+
+      if (res) {
+        alert(isEditMode ? "Successfully updated!" : "Successfully saved!");
+        setShowModal(false);
+        setTitle("");
+        setCoverImageUrl("");
+        setTags("");
+        setContentJSON(null);
+      } else {
+        alert(isEditMode ? "Failed to update content." : "Failed to save content.");
+      }
+    } catch (err) {
+      console.error("Error saving/updating content:", err);
+      alert(`Error ${isEditMode ? "updating" : "saving"} content.`);
+    }
+  };
+
+const handlePreview = () => {
+  editor.read(() => {
+    const html = $generateHtmlFromNodes(editor); // This is valid inside editor.read()
+    navigate("/preview", { state: { content: html } });
+  });
+};
+
+
+
+
+
+
+
+  return (
+    <>
+      <div
+        style={{
+          position: "absolute",
+          top: "0",
+          right: "0",
+          padding: "10px",
+          display: "flex",
+          gap: "10px",
+        }}
+        className="toolbar"
+      >
+        <Button className="btn btn-primary btn-sm" onClick={handleSaveClick}>
+          {isEditMode ? "Update" : "Save"}
+        </Button>
+        <Button className="btn btn-secondary btn-sm" onClick={handlePreview}>
+          Preview
+        </Button>
+      </div>
+
+      <Modal show={showModal} onHide={() => setShowModal(false)}>
+        <Modal.Header closeButton>
+          <Modal.Title>{isEditMode ? "Update" : "Save"} Content Details</Modal.Title>
+        </Modal.Header>
+        <Modal.Body>
+          <Form>
+            <Form.Group className="mb-3" controlId="formTitle">
+              <Form.Label>Title</Form.Label>
+              <Form.Control
+                type="text"
+                placeholder="Enter title"
+                value={title}
+                onChange={(e) => setTitle(e.target.value)}
+              />
+            </Form.Group>
+
+            <Form.Group className="mb-3" controlId="formCoverImage">
+              <Form.Label>Cover Image URL</Form.Label>
+              <Form.Control
+                type="text"
+                placeholder="Enter cover image URL"
+                value={coverImageUrl}
+                onChange={(e) => setCoverImageUrl(e.target.value)}
+              />
+            </Form.Group>
+
+            <Form.Group className="mb-3" controlId="formTags">
+              <Form.Label>Tags (#tag)</Form.Label>
+              <Form.Control
+                type="text"
+                placeholder="Enter tags separated by commas"
+                value={tags}
+                onChange={(e) => setTags(e.target.value)}
+              />
+              <Form.Text className="text-muted">
+                Separate tags with commas (e.g. react,lexical,editor)
+              </Form.Text>
+            </Form.Group>
+          </Form>
+        </Modal.Body>
+        <Modal.Footer>
+          <Button variant="secondary" onClick={() => setShowModal(false)}>
+            Cancel
+          </Button>
+          <Button variant="primary" onClick={handleModalSave}>
+            {isEditMode ? "Update Content" : "Save Content"}
+          </Button>
+        </Modal.Footer>
+      </Modal>
+    </>
+  );
+}
