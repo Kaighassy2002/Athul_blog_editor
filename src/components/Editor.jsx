@@ -24,6 +24,9 @@ import ToolbarDown from "../plugins/ToolbarDown";
 import "../Styles/styles.css";
 import { blogByIdAPI } from "../server/allAPI";
 import { useLexicalComposerContext } from "@lexical/react/LexicalComposerContext";
+import { Link } from 'react-router-dom'
+import { Button } from "bootstrap";
+
 
 // Placeholder component for editor
 function Placeholder() {
@@ -104,30 +107,42 @@ export default function Editor({ id }) {
 
   return (
     <LexicalComposer initialConfig={editorConfig}>
-      <div className="editor-container">
-        <ToolbarPlugin />
-        <div className="editor-inner">
-          <RichTextPlugin
-            contentEditable={<ContentEditable className="editor-input" />}
-            placeholder={<Placeholder />}
-            ErrorBoundary={LexicalErrorBoundary}
-          />
-          <HistoryPlugin />
-          <AutoFocusPlugin />
-          <CodeHighlightPlugin />
-          <ListPlugin />
-          <LinkPlugin />
-          <AutoLinkPlugin />
-          <ListMaxIndentLevelPlugin maxDepth={7} />
-          <MarkdownShortcutPlugin transformers={TRANSFORMERS} />
-
-          {/* Load content JSON into editor */}
-          <LoadSavedContentPlugin content={initialData?.content} />
-        </div>
-
-        {/* Pass full blog data to ToolbarDown for modal editing */}
-        <ToolbarDown id={id} initialData={initialData} />
-      </div>
+     
+    <div className="container-fluid">
+       <div className="row align-items-start g-0 " >
+          <div className="col-auto p-3 bg-light border-end">
+               <Link to={'/'} className='text-dark fw-bold' style={{textDecoration:'none'}} >
+                    <i className="fa-solid fa-house-chimney fs-4"> </i>
+                    </Link>
+          </div>
+          
+            
+          <div className="editor-container col-11">
+            <ToolbarPlugin />
+            <div className="editor-inner">
+              <RichTextPlugin
+                contentEditable={<ContentEditable className="editor-input" />}
+                placeholder={<Placeholder />}
+                ErrorBoundary={LexicalErrorBoundary}
+              />
+              <HistoryPlugin />
+              <AutoFocusPlugin />
+              <CodeHighlightPlugin />
+              <ListPlugin />
+              <LinkPlugin />
+              <AutoLinkPlugin />
+              <ListMaxIndentLevelPlugin maxDepth={7} />
+              <MarkdownShortcutPlugin transformers={TRANSFORMERS} />
+    
+              {/* Load content JSON into editor */}
+              <LoadSavedContentPlugin content={initialData?.content} />
+            </div>
+    
+            {/* Pass full blog data to ToolbarDown for modal editing */}
+            <ToolbarDown id={id} initialData={initialData} />
+          </div>
+       </div>
+    </div>
     </LexicalComposer>
   );
 }

@@ -382,7 +382,7 @@ function BlockOptionsDropdownList({
   };
 
   return (
-    <div className="dropdown" ref={dropDownRef}>
+    <div className="dropdowns" ref={dropDownRef} >
       <button className="item" onClick={formatParagraph}>
         {blockTypeToBlockName.paragraph}
       </button>

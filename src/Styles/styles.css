@@ -519,7 +519,7 @@ body {
     background-image: url(images/icons/code.svg);
   }
   
-  .dropdown {
+  .dropdowns {
     z-index: 5;
     display: block;
     position: absolute;
@@ -531,7 +531,7 @@ body {
     background-color: #fff;
   }
   
-  .dropdown .item {
+  .dropdowns .item {
     margin: 0 8px 0 8px;
     padding: 8px;
     color: #050505;
@@ -549,33 +549,33 @@ body {
     min-width: 268px;
   }
   
-  .dropdown .item .active {
+  .dropdowns .item .active {
     display: flex;
     width: 20px;
     height: 20px;
     background-size: contain;
   }
   
-  .dropdown .item:first-child {
+  .dropdowns .item:first-child {
     margin-top: 8px;
   }
   
-  .dropdown .item:last-child {
+  .dropdowns .item:last-child {
     margin-bottom: 8px;
   }
   
-  .dropdown .item:hover {
+  .dropdowns .item:hover {
     background-color: #eee;
   }
   
-  .dropdown .item .text {
+  .dropdowns .item .text {
     display: flex;
     line-height: 20px;
     flex-grow: 1;
     width: 200px;
   }
   
-  .dropdown .item .icon {
+  .dropdowns .item .icon {
     display: flex;
     width: 20px;
     height: 20px;
