@@ -1,9 +1,9 @@
 import { useLexicalComposerContext } from "@lexical/react/LexicalComposerContext";
-import { Button, Modal, Form } from "react-bootstrap";
+import { Button, Modal, Form, Spinner } from "react-bootstrap";
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { saveEditorAPI, updatesByIdAPI } from "../server/allAPI";
-import { $generateHtmlFromNodes } from '@lexical/html';
+import { $generateHtmlFromNodes } from "@lexical/html";
 
 export default function ToolbarDown({ id = null, initialData = null }) {
   const [editor] = useLexicalComposerContext();
@@ -14,10 +14,11 @@ export default function ToolbarDown({ id = null, initialData = null }) {
   const [coverImageUrl, setCoverImageUrl] = useState("");
   const [tags, setTags] = useState("");
   const [contentJSON, setContentJSON] = useState(null);
+  const [isSaving, setIsSaving] = useState(false);
 
   const isEditMode = Boolean(id);
 
-  // Sync modal fields when modal opens in edit mode
+  // Sync modal fields when opened in edit mode
   useEffect(() => {
     if (showModal && isEditMode && initialData) {
       setTitle(initialData.title || "");
@@ -26,23 +27,23 @@ export default function ToolbarDown({ id = null, initialData = null }) {
     }
   }, [showModal, isEditMode, initialData]);
 
-  const handleSaveClick = () => {
-    const editorState = editor.getEditorState();
+ const handleSaveClick = () => {
+  const editorState = editor.getEditorState();
 
-    editorState.read(() => {
-      const root = editorState._nodeMap.get("root");
-      const totalText = root?.getTextContent?.() ?? "";
+  editorState.read(() => {
+    const root = editorState._nodeMap.get("root");
+    const plainText = root?.getTextContent()?.trim() || "";
 
-      if (totalText.trim() === "") {
-        alert("Editor is empty. Nothing to save.");
-        return;
-      }
+    if (!plainText) {
+      alert("Editor is empty. Nothing to save.");
+      return;
+    }
 
-      const content = editorState.toJSON();
-      setContentJSON(content);
-      setShowModal(true);
-    });
-  };
+    const content = editorState.toJSON();
+    setContentJSON(content);
+    setShowModal(true);
+  });
+};
 
   const handleModalSave = async () => {
     if (title.trim() === "") {
@@ -53,11 +54,15 @@ export default function ToolbarDown({ id = null, initialData = null }) {
     const payload = {
       title,
       coverImageUrl,
-      tags: tags.split(",").map((t) => t.trim()).filter(Boolean),
+      tags: tags
+        .split(",")
+        .map((t) => t.trim())
+        .filter(Boolean),
       content: contentJSON,
     };
 
     try {
+      setIsSaving(true);
       let res;
       if (isEditMode) {
         res = await updatesByIdAPI(id, payload);
@@ -72,27 +77,25 @@ export default function ToolbarDown({ id = null, initialData = null }) {
         setCoverImageUrl("");
         setTags("");
         setContentJSON(null);
+        localStorage.removeItem("unsaved-editor-content");
       } else {
         alert(isEditMode ? "Failed to update content." : "Failed to save content.");
       }
     } catch (err) {
       console.error("Error saving/updating content:", err);
       alert(`Error ${isEditMode ? "updating" : "saving"} content.`);
+    } finally {
+      setIsSaving(false);
     }
   };
 
-const handlePreview = () => {
-  editor.read(() => {
-    const html = $generateHtmlFromNodes(editor); // This is valid inside editor.read()
-    navigate("/preview", { state: { content: html } });
-  });
-};
-
-
-
-
-
-
+  const handlePreview = () => {
+    const editorState = editor.getEditorState();
+    editorState.read(() => {
+      const html = $generateHtmlFromNodes(editor, null); // ✅ correct usage
+      navigate("/preview", { state: { content: html } });
+    });
+  };
 
   return (
     <>
@@ -115,7 +118,7 @@ const handlePreview = () => {
         </Button>
       </div>
 
-      <Modal show={showModal} onHide={() => setShowModal(false)}>
+      <Modal show={showModal} onHide={() => setShowModal(false)} backdrop="static">
         <Modal.Header closeButton>
           <Modal.Title>{isEditMode ? "Update" : "Save"} Content Details</Modal.Title>
         </Modal.Header>
@@ -150,17 +153,23 @@ const handlePreview = () => {
                 onChange={(e) => setTags(e.target.value)}
               />
               <Form.Text className="text-muted">
-                Separate tags with commas (e.g. react,lexical,editor)
+                Separate tags with commas (e.g. react, lexical, editor)
               </Form.Text>
             </Form.Group>
           </Form>
         </Modal.Body>
         <Modal.Footer>
-          <Button variant="secondary" onClick={() => setShowModal(false)}>
+          <Button variant="secondary" onClick={() => setShowModal(false)} disabled={isSaving}>
             Cancel
           </Button>
-          <Button variant="primary" onClick={handleModalSave}>
-            {isEditMode ? "Update Content" : "Save Content"}
+          <Button variant="primary" onClick={handleModalSave} disabled={isSaving}>
+            {isSaving ? (
+              <>
+                <Spinner animation="border" size="sm" /> Saving...
+              </>
+            ) : (
+              isEditMode ? "Update Content" : "Save Content"
+            )}
           </Button>
         </Modal.Footer>
       </Modal>

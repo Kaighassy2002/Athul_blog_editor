@@ -25,8 +25,8 @@ import "../Styles/styles.css";
 import { blogByIdAPI } from "../server/allAPI";
 import { useLexicalComposerContext } from "@lexical/react/LexicalComposerContext";
 import { Link } from 'react-router-dom'
-import { Button } from "bootstrap";
-
+// import { Button } from "bootstrap";
+import LocalStoragePlugin from "../plugins/LocalStoragePlugin"
 
 // Placeholder component for editor
 function Placeholder() {
@@ -56,31 +56,47 @@ const editorConfig = {
 };
 
 // LoadSavedContentPlugin - loads content JSON into editor
+const STORAGE_KEY = "unsaved-editor-content";
 function LoadSavedContentPlugin({ content }) {
   const [editor] = useLexicalComposerContext();
 
-  useEffect(() => {
-    if (!content) {
-      return;
+ useEffect(() => {
+  let toLoad = content;
+
+  if (!toLoad) {
+    const local = localStorage.getItem(STORAGE_KEY);
+    console.log(localStorage.getItem(STORAGE_KEY));
+    
+    if (local) {
+      console.warn("⚠️ Using unsaved local content from localStorage");
+      toLoad = local;
+    }
+  }
+
+  if (!toLoad) return;
+
+  try {
+    let parsedContent;
+
+    if (typeof toLoad === "string") {
+      parsedContent = JSON.parse(toLoad);
+    } else {
+      parsedContent = toLoad;
     }
 
-    try {
-      const parsedState =
-        typeof content === "string"
-          ? editor.parseEditorState(JSON.parse(content))
-          : editor.parseEditorState(content);
+    const parsedState = editor.parseEditorState(parsedContent);
+    Promise.resolve().then(() => {
+      editor.setEditorState(parsedState);
+    });
+  } catch (err) {
+    console.error("❌ Failed to parse editor state:", err);
+  }
+}, [editor, content]);
 
-      // Defer the editor state update to avoid React flushSync warning
-      Promise.resolve().then(() => {
-        editor.setEditorState(parsedState);
-      });
-    } catch (err) {
-      console.error("Failed to parse editor state:", err);
-    }
-  }, [editor, content]);
 
   return null;
 }
+
 
 // Main Editor component
 export default function Editor({ id }) {
@@ -133,7 +149,7 @@ export default function Editor({ id }) {
               <AutoLinkPlugin />
               <ListMaxIndentLevelPlugin maxDepth={7} />
               <MarkdownShortcutPlugin transformers={TRANSFORMERS} />
-    
+               <LocalStoragePlugin/>
               {/* Load content JSON into editor */}
               <LoadSavedContentPlugin content={initialData?.content} />
             </div>

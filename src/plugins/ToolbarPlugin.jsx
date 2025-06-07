@@ -1,6 +1,7 @@
 import { useLexicalComposerContext } from "@lexical/react/LexicalComposerContext";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import ToolbarDown from "./ToolbarDown"
+// import ToolbarDown from "./ToolbarDown"
+import "../Styles/styles.css"
 import {
   CAN_REDO_COMMAND,
   CAN_UNDO_COMMAND,

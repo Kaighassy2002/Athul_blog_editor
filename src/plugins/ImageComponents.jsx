@@ -3,6 +3,7 @@ import Moveable from "react-moveable";
 
 const ImageComponent = ({ src }) => {
   const ref = useRef(null);
+  const [selected, setSelected] = useState(false);
   const [frame, setFrame] = useState({
     translate: [0, 0],
     rotate: 0,
@@ -18,6 +19,19 @@ const ImageComponent = ({ src }) => {
     }
   }, [frame]);
 
+  useEffect(() => {
+    function handleClickOutside(event) {
+      if (ref.current && !ref.current.contains(event.target)) {
+        setSelected(false);
+      }
+    }
+
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, []);
+
   return (
     <>
       <div
@@ -25,7 +39,12 @@ const ImageComponent = ({ src }) => {
         style={{
           display: "inline-block",
           touchAction: "none",
+          width: frame.width,
+          height: frame.height,
+          border: selected ? "1px solid #4A90E2" : "none", 
+          cursor: "pointer",
         }}
+        onClick={() => setSelected(true)}
       >
         <img
           src={src}
@@ -33,9 +52,9 @@ const ImageComponent = ({ src }) => {
           style={{ width: "100%", height: "100%", objectFit: "contain" }}
         />
       </div>
-
+    {selected && ref.current && (
       <Moveable
-        target={ref}
+        target={ref.current}
         draggable
         resizable
         rotatable
@@ -49,11 +68,12 @@ const ImageComponent = ({ src }) => {
             translate: beforeTranslate,
           }));
         }}
-        onResize={({ width, height }) => {
+        onResize={({ width, height ,drag}) => {
           setFrame((prev) => ({
             ...prev,
             width,
             height,
+            translate: drag.beforeTranslate,
           }));
         }}
         onRotate={({ beforeRotate }) => {
@@ -63,6 +83,7 @@ const ImageComponent = ({ src }) => {
           }));
         }}
       />
+       )}
     </>
   );
 };
