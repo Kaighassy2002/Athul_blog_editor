@@ -15,6 +15,7 @@ export default function ToolbarDown({ id = null, initialData = null }) {
   const [tags, setTags] = useState("");
   const [contentJSON, setContentJSON] = useState(null);
   const [isSaving, setIsSaving] = useState(false);
+  const [type, setType] = useState("");
 
   const isEditMode = Boolean(id);
 
@@ -58,6 +59,7 @@ export default function ToolbarDown({ id = null, initialData = null }) {
         .split(",")
         .map((t) => t.trim())
         .filter(Boolean),
+        type,
       content: contentJSON,
     };
 
@@ -157,6 +159,17 @@ export default function ToolbarDown({ id = null, initialData = null }) {
               </Form.Text>
             </Form.Group>
           </Form>
+          <Form.Group className="mb-3" controlId="formType">
+      <Form.Label>Type</Form.Label>
+      <Form.Select
+        value={type}
+        onChange={(e) => setType(e.target.value)}
+      >
+        <option value="">Select type</option>
+        <option value="blog">Blog</option>
+        <option value="scribble">Scribble</option>
+      </Form.Select>
+    </Form.Group>
         </Modal.Body>
         <Modal.Footer>
           <Button variant="secondary" onClick={() => setShowModal(false)} disabled={isSaving}>
