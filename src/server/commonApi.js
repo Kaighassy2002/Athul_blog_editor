@@ -10,10 +10,10 @@ export const commonAPI = async (httpRequest, url, reqBody, reqHeader) => {
 
   try {
     const res = await axios(reqConfig);
-    return res.data;  // <-- Return only the data payload from response
+    return res; 
   } catch (err) {
-    // You might want to throw here or handle differently, but for now:
+    
     console.error('API error:', err);
-    return null;  // or throw err;
+    throw err;  // or throw err;
   }
 };

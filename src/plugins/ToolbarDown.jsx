@@ -2,7 +2,14 @@ import { useLexicalComposerContext } from "@lexical/react/LexicalComposerContext
 import { Button, Modal, Form, Spinner } from "react-bootstrap";
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { saveEditorAPI, updatesByIdAPI } from "../server/allAPI";
+import {
+  characterAPI,
+  saveEditorBlogAPI,
+  saveEditorScribbleAPI,
+  teachStackAPI,
+  updatesBlogByIdAPI,
+  updatesScribbleByIdAPI,
+} from "../server/allAPI";
 import { $generateHtmlFromNodes } from "@lexical/html";
 
 export default function ToolbarDown({ id = null, initialData = null }) {
@@ -11,90 +18,159 @@ export default function ToolbarDown({ id = null, initialData = null }) {
 
   const [showModal, setShowModal] = useState(false);
   const [title, setTitle] = useState("");
-  const [coverImageUrl, setCoverImageUrl] = useState("");
   const [tags, setTags] = useState("");
+  const [coverImageUrl, setCoverImageUrl] = useState("");
+  const [tech_stack, setTechStack] = useState("");
+  const [character, setCharacter] = useState("");
+  const [category, setCategory] = useState("");
+  const [type, setType] = useState("");
+  const [characterList, setCharacterList] = useState([]);
+  const [techStackList, setTeackStackList] = useState([]);
   const [contentJSON, setContentJSON] = useState(null);
   const [isSaving, setIsSaving] = useState(false);
-  const [type, setType] = useState("");
 
   const isEditMode = Boolean(id);
 
-  // Sync modal fields when opened in edit mode
+  const generateSlug = (title) =>
+    title
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, "-")
+      .replace(/^-+|-+$/g, "");
+
   useEffect(() => {
     if (showModal && isEditMode && initialData) {
       setTitle(initialData.title || "");
-      setCoverImageUrl(initialData.coverImageUrl || "");
       setTags((initialData.tags || []).join(", "));
+      setCoverImageUrl(initialData.coverImageUrl || "");
+      setTechStack((initialData.tech_stack || []).join(", "));
+      setCharacter(initialData.character || "");
+      setCategory(initialData.category || "");
+      setType(initialData.type || "");
     }
   }, [showModal, isEditMode, initialData]);
 
- const handleSaveClick = () => {
-  const editorState = editor.getEditorState();
+  const handleSaveClick = () => {
+    const editorState = editor.getEditorState();
+    editorState.read(() => {
+      const root = editorState._nodeMap.get("root");
+      const plainText = root?.getTextContent()?.trim() || "";
 
-  editorState.read(() => {
-    const root = editorState._nodeMap.get("root");
-    const plainText = root?.getTextContent()?.trim() || "";
+      if (!plainText) {
+        alert("Editor is empty. Nothing to save.");
+        return;
+      }
 
-    if (!plainText) {
-      alert("Editor is empty. Nothing to save.");
-      return;
+      const content = editorState.toJSON();
+      setContentJSON(content);
+      setShowModal(true);
+    });
+  };
+
+  useEffect(() => {
+    if (type === "scribble") {
+      characterAPI()
+        .then((res) => {
+          setCharacterList(res.data);
+        })
+        .catch((err) => {
+          console.error("Character API error:", err);
+        });
     }
+  }, [type]);
 
-    const content = editorState.toJSON();
-    setContentJSON(content);
-    setShowModal(true);
-  });
-};
+  useEffect(() => {
+    if (type === "blog") {
+      teachStackAPI()
+        .then((res) => {
+          setTeackStackList(res.data);
+        })
+        .catch((err) => {
+          console.error("Teach Stack API error:", err);
+        });
+    }
+  }, [type]);
 
   const handleModalSave = async () => {
+    if (!type) {
+      alert("Please select a type (Blog or Scribble).");
+      return;
+    }
     if (title.trim() === "") {
       alert("Please enter a title.");
       return;
     }
 
-    const payload = {
+    const slug = generateSlug(title);
+    const basePayload = {
       title,
-      coverImageUrl,
+      slug,
+      content: contentJSON,
+      type,
+    };
+
+    const blogPayload = {
+      ...basePayload,
       tags: tags
         .split(",")
         .map((t) => t.trim())
         .filter(Boolean),
-        type,
-      content: contentJSON,
+      tech_stack: tech_stack.split(",").map((id) => id.trim()),
+      coverImageUrl,
+    };
+
+    const scribblePayload = {
+      ...basePayload,
+      character: character.trim(),
+      category: category.trim(),
     };
 
     try {
       setIsSaving(true);
+
       let res;
       if (isEditMode) {
-        res = await updatesByIdAPI(id, payload);
+        res =
+          type === "blog"
+            ? await updatesBlogByIdAPI(id, blogPayload)
+            : await updatesScribbleByIdAPI(id, scribblePayload);
       } else {
-        res = await saveEditorAPI(payload);
+        res =
+          type === "blog"
+            ? await saveEditorBlogAPI(blogPayload)
+            : await saveEditorScribbleAPI(scribblePayload);
       }
 
-      if (res) {
+      if (res?.status === 200 || res?.status === 201) {
         alert(isEditMode ? "Successfully updated!" : "Successfully saved!");
-        setShowModal(false);
-        setTitle("");
-        setCoverImageUrl("");
-        setTags("");
-        setContentJSON(null);
-        localStorage.removeItem("unsaved-editor-content");
+        resetModalFields();
       } else {
-        alert(isEditMode ? "Failed to update content." : "Failed to save content.");
+        alert("Failed to save content. Status: " + res?.status);
       }
     } catch (err) {
-      console.error("Error saving/updating content:", err);
-      alert(`Error ${isEditMode ? "updating" : "saving"} content.`);
+      console.error("Save error:", err);
+      alert("Error occurred while saving content.");
     } finally {
       setIsSaving(false);
     }
   };
 
+  const resetModalFields = () => {
+    setShowModal(false);
+    setTitle("");
+    setTags("");
+    setCoverImageUrl("");
+    setTechStack("");
+    setCharacter("");
+    setCategory("");
+    setType("");
+    setContentJSON(null);
+    localStorage.removeItem("unsaved-editor-content");
+  };
+
   const handlePreview = () => {
     const editorState = editor.getEditorState();
     editorState.read(() => {
-      const html = $generateHtmlFromNodes(editor, null); // ✅ correct usage
+      const html = $generateHtmlFromNodes(editor, null);
       navigate("/preview", { state: { content: html } });
     });
   };
@@ -120,68 +196,124 @@ export default function ToolbarDown({ id = null, initialData = null }) {
         </Button>
       </div>
 
-      <Modal show={showModal} onHide={() => setShowModal(false)} backdrop="static">
+      <Modal
+        show={showModal}
+        onHide={() => setShowModal(false)}
+        backdrop="static"
+      >
         <Modal.Header closeButton>
-          <Modal.Title>{isEditMode ? "Update" : "Save"} Content Details</Modal.Title>
+          <Modal.Title>{isEditMode ? "Update" : "Save"} Content</Modal.Title>
         </Modal.Header>
         <Modal.Body>
           <Form>
-            <Form.Group className="mb-3" controlId="formTitle">
+            <Form.Group className="mb-3">
+              <Form.Label>Type</Form.Label>
+              <Form.Select
+                value={type}
+                onChange={(e) => setType(e.target.value)}
+              >
+                <option value="">Select type</option>
+                <option value="blog">Blog</option>
+                <option value="scribble">Scribble</option>
+              </Form.Select>
+            </Form.Group>
+
+            <Form.Group className="mb-3">
               <Form.Label>Title</Form.Label>
               <Form.Control
                 type="text"
-                placeholder="Enter title"
                 value={title}
                 onChange={(e) => setTitle(e.target.value)}
               />
             </Form.Group>
 
-            <Form.Group className="mb-3" controlId="formCoverImage">
-              <Form.Label>Cover Image URL</Form.Label>
-              <Form.Control
-                type="text"
-                placeholder="Enter cover image URL"
-                value={coverImageUrl}
-                onChange={(e) => setCoverImageUrl(e.target.value)}
-              />
-            </Form.Group>
+            {type === "blog" && (
+              <>
+                <Form.Group className="mb-3">
+                  <Form.Label>Tags (comma separated)</Form.Label>
+                  <Form.Control
+                    type="text"
+                    value={tags}
+                    onChange={(e) => setTags(e.target.value)}
+                  />
+                </Form.Group>
 
-            <Form.Group className="mb-3" controlId="formTags">
-              <Form.Label>Tags (#tag)</Form.Label>
-              <Form.Control
-                type="text"
-                placeholder="Enter tags separated by commas"
-                value={tags}
-                onChange={(e) => setTags(e.target.value)}
-              />
-              <Form.Text className="text-muted">
-                Separate tags with commas (e.g. react, lexical, editor)
-              </Form.Text>
-            </Form.Group>
+                <Form.Group className="mb-3">
+                  <Form.Label>Tech Stack</Form.Label>
+                  <Form.Select
+                    value={tech_stack}
+                    onChange={(e) => setTechStack(e.target.value)}
+                  >
+                    <option value="">Select a Tech Stack</option>
+                    {techStackList.map((tech) => (
+                      <option key={tech._id} value={tech._id}>
+                        {tech.name}
+                      </option>
+                    ))}
+                  </Form.Select>
+                </Form.Group>
+
+                <Form.Group className="mb-3">
+                  <Form.Label>Cover Image URL</Form.Label>
+                  <Form.Control
+                    type="text"
+                    value={coverImageUrl}
+                    onChange={(e) => setCoverImageUrl(e.target.value)}
+                  />
+                </Form.Group>
+              </>
+            )}
+
+            {type === "scribble" && (
+              <>
+                <Form.Group className="mb-3">
+                  <Form.Label>Character</Form.Label>
+                  <Form.Select
+                    value={character}
+                    onChange={(e) => setCharacter(e.target.value)}
+                  >
+                    <option value="">Select a character</option>
+                    {characterList.map((char) => (
+                      <option key={char._id} value={char._id}>
+                        {char.name}
+                      </option>
+                    ))}
+                  </Form.Select>
+                </Form.Group>
+
+                <Form.Group className="mb-3">
+                  <Form.Label>Category</Form.Label>
+                  <Form.Control
+                    type="text"
+                    value={category}
+                    onChange={(e) => setCategory(e.target.value)}
+                  />
+                </Form.Group>
+              </>
+            )}
           </Form>
-          <Form.Group className="mb-3" controlId="formType">
-      <Form.Label>Type</Form.Label>
-      <Form.Select
-        value={type}
-        onChange={(e) => setType(e.target.value)}
-      >
-        <option value="">Select type</option>
-        <option value="blog">Blog</option>
-        <option value="scribble">Scribble</option>
-      </Form.Select>
-    </Form.Group>
         </Modal.Body>
         <Modal.Footer>
-          <Button variant="secondary" onClick={() => setShowModal(false)} disabled={isSaving}>
+          <Button
+            variant="secondary"
+            onClick={() => setShowModal(false)}
+            disabled={isSaving}
+          >
             Cancel
           </Button>
-          <Button variant="primary" onClick={handleModalSave} disabled={isSaving}>
+          <Button
+            variant="primary"
+            onClick={handleModalSave}
+            disabled={isSaving}
+          >
             {isSaving ? (
               <>
                 <Spinner animation="border" size="sm" /> Saving...
               </>
+            ) : isEditMode ? (
+              "Update Content"
             ) : (
-              isEditMode ? "Update Content" : "Save Content"
+              "Save Content"
             )}
           </Button>
         </Modal.Footer>
