@@ -179,10 +179,7 @@ export default function Editor() {
               <MarkdownShortcutPlugin transformers={TRANSFORMERS} />
               <LocalStoragePlugin />
 
-              {/* Load saved content into editor */}
-              {initialData?.content && (
-                <LoadSavedContentPlugin content={initialData.content} />
-              )}
+           <LoadSavedContentPlugin content={initialData?.content} />
             </div>
 
             <ToolbarDown id={id} initialData={initialData} />

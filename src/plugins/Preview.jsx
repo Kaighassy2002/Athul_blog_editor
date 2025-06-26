@@ -4,8 +4,10 @@ import { Button } from "react-bootstrap";
 export default function PreviewPage() {
   const location = useLocation();
   const navigate = useNavigate();
-  const content = location.state?.content?.trim() || "<p style='text-align:center;'>No content to preview.</p>";
-//  console.log(content);
+ const content =
+  localStorage.getItem("editor-html-preview")?.trim() ||
+  "<p style='text-align:center;'>No content to preview.</p>";
+
  console.log("HTML Content:", content);
 
   return (

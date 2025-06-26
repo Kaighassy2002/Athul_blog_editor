@@ -168,12 +168,16 @@ export default function ToolbarDown({ id = null, initialData = null }) {
   };
 
   const handlePreview = () => {
-    const editorState = editor.getEditorState();
-    editorState.read(() => {
-      const html = $generateHtmlFromNodes(editor, null);
-      navigate("/preview", { state: { content: html } });
-    });
-  };
+  editor.update(() => {
+    const html = $generateHtmlFromNodes(editor);
+    const json = editor.getEditorState().toJSON();
+
+    localStorage.setItem("editor-html-preview", html); 
+    localStorage.setItem("unsaved-editor-content", JSON.stringify(json)); 
+  });
+
+  navigate("/preview"); 
+};
 
   return (
     <>
