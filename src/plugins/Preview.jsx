@@ -43,9 +43,7 @@ export default function PreviewPage() {
           marginLeft: "auto",
           marginRight: "auto",
           padding: "2rem",
-          backgroundColor: "#ffffff",
-          borderRadius: "8px",
-          boxShadow: "0 4px 12px rgba(0, 0, 0, 0.1)",
+          
           minHeight: "60vh",
         }}
         dangerouslySetInnerHTML={{ __html: content }}

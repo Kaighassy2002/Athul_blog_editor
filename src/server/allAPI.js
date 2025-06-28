@@ -41,3 +41,11 @@ export const characterAPI= async()=>{
 export const teachStackAPI= async()=>{
   return  await commonAPI("GET",`${SERVER_URL}/tech-items`)
 }
+
+export const toggleBlogPublishAPI = async (id, is_published) => {
+  return await commonAPI("PATCH", `${SERVER_URL}/publish-blog/${id}`, { is_published });
+};
+
+export const toggleScribblePublishAPI = async (id, is_published) => {
+  return await commonAPI("PATCH", `${SERVER_URL}/publish-scribble/${id}`, { is_published });
+};
